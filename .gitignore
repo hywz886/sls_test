@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+__pycache__/
+*.pyc
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+.esbuild/
+
+# Cache and temp files
+.cache/
+*.log
+*.state
+
+# Data files
+data/*.csv
+data/*.json
+
+# Memory and reports
+memory/
+reports/
+
+# OpenClaw internal
+.openclaw/
+AGENTS.md
+BOOTSTRAP.md
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+workspace-state.json
+
+# Other projects not to include
+control-ui-new/
+skills/
+scripts/

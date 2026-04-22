@@ -1,6 +1,7 @@
 import { ConfigProvider, Layout, Menu } from 'antd';
 import type { MenuProps } from 'antd';
 import Dashboard from './components/Dashboard';
+import TokenUsage from './components/TokenUsage';
 import './App.css';
 import { useState } from 'react';
 
@@ -23,14 +24,15 @@ function getItem(
 }
 
 const menuItems: MenuItem[] = [
-  getItem('📊 总览', 'overview'),
-  getItem('📈 费用分析', 'analysis'),
+  getItem('📊 日志分析', 'log-analysis'),
+  getItem('🎫 Token 使用', 'token-usage'),
   getItem('📁 存储桶', 'buckets'),
   getItem('⚙️ 设置', 'settings'),
 ];
 
 const App: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [selectedKey, setSelectedKey] = useState<string>('log-analysis');
 
   return (
     <ConfigProvider
@@ -97,7 +99,8 @@ const App: React.FC = () => {
           <Menu
             theme="dark"
             mode="inline"
-            defaultSelectedKeys={['overview']}
+            selectedKeys={[selectedKey]}
+            onClick={({ key }) => setSelectedKey(key)}
             items={menuItems}
             style={{
               background: 'transparent',
@@ -120,7 +123,14 @@ const App: React.FC = () => {
               overflow: 'auto',
             }}
           >
-            <Dashboard />
+            {selectedKey === 'log-analysis' && <Dashboard />}
+            {selectedKey === 'token-usage' && <TokenUsage />}
+            {selectedKey === 'buckets' && (
+              <div style={{ fontSize: 18, color: '#666' }}>📁 存储桶页面 - 开发中</div>
+            )}
+            {selectedKey === 'settings' && (
+              <div style={{ fontSize: 18, color: '#666' }}>⚙️ 设置页面 - 开发中</div>
+            )}
           </Content>
         </Layout>
       </Layout>
