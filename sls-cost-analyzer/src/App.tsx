@@ -33,6 +33,7 @@ const menuItems: MenuItem[] = [
 const App: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string>('log-analysis');
+  const [renderKey, setRenderKey] = useState<string>('log-analysis');
 
   return (
     <ConfigProvider
@@ -100,7 +101,10 @@ const App: React.FC = () => {
             theme="dark"
             mode="inline"
             selectedKeys={[selectedKey]}
-            onClick={({ key }) => setSelectedKey(key)}
+            onClick={({ key }) => {
+              setSelectedKey(key);
+              setRenderKey(key);
+            }}
             items={menuItems}
             style={{
               background: 'transparent',
@@ -123,13 +127,13 @@ const App: React.FC = () => {
               overflow: 'auto',
             }}
           >
-            {selectedKey === 'log-analysis' && <Dashboard />}
-            {selectedKey === 'token-usage' && <TokenUsage />}
-            {selectedKey === 'buckets' && (
-              <div style={{ fontSize: 18, color: '#666' }}>📁 存储桶页面 - 开发中</div>
+            {renderKey === 'log-analysis' && <Dashboard key="dashboard" />}
+            {renderKey === 'token-usage' && <TokenUsage key="token" />}
+            {renderKey === 'buckets' && (
+              <div key="buckets" style={{ fontSize: 18, color: '#666' }}>📁 存储桶页面 - 开发中</div>
             )}
-            {selectedKey === 'settings' && (
-              <div style={{ fontSize: 18, color: '#666' }}>⚙️ 设置页面 - 开发中</div>
+            {renderKey === 'settings' && (
+              <div key="settings" style={{ fontSize: 18, color: '#666' }}>⚙️ 设置页面 - 开发中</div>
             )}
           </Content>
         </Layout>
