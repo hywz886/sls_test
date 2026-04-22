@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Cache and temp files
+.cache/
+*.log
+*.state
+__pycache__/
+*.pyc
+
+# Data files
+../data/*.csv
+../data/*.json
+
+# Logs
+../logs/*.log
+
+# Memory and reports
+../memory/
+../reports/
+
+# OpenClaw internal
+../.openclaw/
+../.cache/
+../AGENTS.md
+../BOOTSTRAP.md
+../HEARTBEAT.md
+../IDENTITY.md
+../SOUL.md
+../TOOLS.md
+../USER.md
+../workspace-state.json
+
+# Other projects
+../control-ui-new/
+../skills/
+../scripts/
+
+# Backend (will be added separately if needed)
+# ../sls-cost-analyzer-backend/
