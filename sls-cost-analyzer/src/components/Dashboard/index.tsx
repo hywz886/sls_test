@@ -6,10 +6,14 @@ import { Charts } from './Charts';
 import { DataTable } from './DataTable';
 import dayjs from 'dayjs';
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  initialDate?: string;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ initialDate }) => {
   const [data, setData] = useState<CostAnalysis | null>(null);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>(dayjs().format('YYYY-MM-DD'));
+  const [selectedDate, setSelectedDate] = useState<string>(initialDate || dayjs().format('YYYY-MM-DD'));
   const [trendDateRange, setTrendDateRange] = useState<[string, string] | null>(null);
   const [selectedLogstore, setSelectedLogstore] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,6 +22,7 @@ const Dashboard: React.FC = () => {
   // 新卡片数据
   const [todayCost, setTodayCost] = useState<number>(0);
   const [monthToDateCost, setMonthToDateCost] = useState<number>(0);
+  const [dayComparison, setDayComparison] = useState<{ currentDay: number; lastDay: number; changePercent: number; trend: 'up' | 'down' | 'stable' } | undefined>(undefined);
   const [weekComparison, setWeekComparison] = useState<{ currentWeek: number; lastWeek: number; changePercent: number; trend: 'up' | 'down' | 'stable' } | undefined>(undefined);
   const [monthComparison, setMonthComparison] = useState<{ currentMonth: number; lastMonth: number; changePercent: number; trend: 'up' | 'down' | 'stable' } | undefined>(undefined);
 
@@ -63,8 +68,18 @@ const Dashboard: React.FC = () => {
         const monthTotal = monthResult.data.dailyCosts?.reduce((sum: number, d: any) => sum + d.totalCost, 0) || 0;
         setMonthToDateCost(monthTotal);
         
-        // 3. 周对比 & 4. 月对比 - 直接使用后端 API 返回的数据
+        // 3. 日对比 - 直接使用后端 API 返回的数据
         // 后端已经根据工作日/非工作日类型计算了对比数据
+        if (costData.dayComparison) {
+          setDayComparison({
+            currentDay: costData.totalCost || 0,
+            lastDay: costData.dayComparison.lastPeriodTotal || 0,
+            changePercent: costData.dayComparison.changePercent || 0,
+            trend: costData.dayComparison.trend || 'stable'
+          });
+        }
+        
+        // 4. 周对比
         if (costData.weekComparison) {
           setWeekComparison({
             currentWeek: costData.totalCost || 0,
@@ -74,6 +89,7 @@ const Dashboard: React.FC = () => {
           });
         }
         
+        // 5. 月对比
         if (costData.monthComparison) {
           setMonthComparison({
             currentMonth: costData.totalCost || 0,
@@ -100,6 +116,10 @@ const Dashboard: React.FC = () => {
       try {
         const dates = await fetchAvailableDates();
         setAvailableDates(dates);
+        // 通知 App 组件可用日期列表
+        window.dispatchEvent(new CustomEvent('updateAvailableDates', { 
+          detail: dates 
+        }));
 
         const allDataResponse = await fetch('/api/query?all=true');
         const allDataResult = await allDataResponse.json();
@@ -139,6 +159,9 @@ const Dashboard: React.FC = () => {
 
           setData(costData);
           setInitialized(true);
+          
+          // 初始化时计算卡片数据
+          calculateCardData(costData, dates);
         }
       } catch (error) {
         console.error('Failed to initialize:', error);
@@ -154,6 +177,19 @@ const Dashboard: React.FC = () => {
     if (!initialized || !selectedDate || !availableDates.includes(selectedDate)) return;
     loadData(selectedDate, true);
   }, [selectedDate, loadData, availableDates, initialized]);
+
+  // 监听全局日期更新事件（来自 Header 的日期选择器）
+  useEffect(() => {
+    const handleGlobalDateUpdate = (event: CustomEvent<string>) => {
+      const newDate = event.detail;
+      if (newDate && availableDates.includes(newDate)) {
+        setSelectedDate(newDate);
+      }
+    };
+
+    window.addEventListener('updateGlobalDate', handleGlobalDateUpdate as EventListener);
+    return () => window.removeEventListener('updateGlobalDate', handleGlobalDateUpdate as EventListener);
+  }, [availableDates]);
 
   // 监听日期范围更新事件
   useEffect(() => {
@@ -301,8 +337,11 @@ const Dashboard: React.FC = () => {
       <StatCards
         todayCost={todayCost}
         monthToDateCost={monthToDateCost}
+        dayComparison={dayComparison}
         weekComparison={weekComparison}
         monthComparison={monthComparison}
+        selectedDate={selectedDate}
+        isWorkday={data?.isWorkday}
       />
 
       <Charts 

@@ -70,6 +70,7 @@ export interface ProcessResponse {
     totalCost: number;
     avgDailyCost: number;
     projectCount: number;
+    dayComparison?: ComparisonData;
     weekComparison?: ComparisonData;
     monthComparison?: ComparisonData;
   };
@@ -81,6 +82,12 @@ export interface LogstoreSummary {
   projectName: string;
   logstore: string;
   totalCost: number;
+  dayComparison?: {
+    lastPeriodTotal: number;
+    changeAmount: number;
+    changePercent: number;
+    trend: 'up' | 'down' | 'stable';
+  } | null;
   weekComparison?: {
     lastPeriodTotal: number;
     changeAmount: number;

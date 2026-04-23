@@ -19,6 +19,12 @@ export interface LogstoreSummary {
   projectName: string;
   logstore: string;
   totalCost: number;
+  dayComparison?: {
+    lastPeriodTotal: number;
+    changeAmount: number;
+    changePercent: number;
+    trend: 'up' | 'down' | 'stable';
+  } | null;
   weekComparison?: {
     lastPeriodTotal: number;
     changeAmount: number;
@@ -43,6 +49,12 @@ export interface CostAnalysis {
   isWorkday?: boolean;
   workdayReason?: string;
   // 对比数据（后端返回）
+  dayComparison?: {
+    lastPeriodTotal: number;
+    changeAmount: number;
+    changePercent: number;
+    trend: 'up' | 'down' | 'stable';
+  };
   weekComparison?: {
     lastPeriodTotal: number;
     changeAmount: number;

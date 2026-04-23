@@ -26,6 +26,12 @@ export interface StatCardsProps {
   // 新卡片数据
   todayCost?: number;
   monthToDateCost?: number;
+  dayComparison?: {
+    currentDay: number;
+    lastDay: number;
+    changePercent: number;
+    trend: 'up' | 'down' | 'stable';
+  };
   weekComparison?: {
     currentWeek: number;
     lastWeek: number;

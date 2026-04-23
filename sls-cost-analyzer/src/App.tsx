@@ -1,11 +1,15 @@
-import { ConfigProvider, Layout, Menu } from 'antd';
+import { ConfigProvider, Layout, Menu, Typography, DatePicker } from 'antd';
 import type { MenuProps } from 'antd';
 import Dashboard from './components/Dashboard';
 import TokenUsage from './components/TokenUsage';
-import './App.css';
+import './styles/base.css';
+import './styles/components.css';
 import { useState } from 'react';
+import React from 'react';
+import dayjs from 'dayjs';
 
 const { Sider, Content } = Layout;
+const { Text } = Typography;
 
 type MenuItem = Required<MenuProps>['items'][number];
 
@@ -13,12 +17,10 @@ function getItem(
   label: React.ReactNode,
   key: React.Key,
   icon?: React.ReactNode,
-  children?: MenuItem[],
 ): MenuItem {
   return {
     key,
     icon,
-    children,
     label,
   } as MenuItem;
 }
@@ -34,26 +36,47 @@ const App: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string>('log-analysis');
   const [renderKey, setRenderKey] = useState<string>('log-analysis');
+  const [selectedDate, setSelectedDate] = useState<string>(dayjs().format('YYYY-MM-DD'));
+  const availableDatesRef = React.useRef<string[]>([]);
+
+  // 监听 Dashboard 传来的可用日期列表
+  React.useEffect(() => {
+    const handleAvailableDatesUpdate = (event: CustomEvent<string[]>) => {
+      const dates = event.detail;
+      if (dates && dates.length > 0) {
+        const sortedDates = dates.sort((a, b) => b.localeCompare(a));
+        availableDatesRef.current = sortedDates;
+        // 设置默认选中最新日期（有数据的最新日期）
+        if (sortedDates.length > 0) {
+          setSelectedDate(sortedDates[0]);
+        }
+      }
+    };
+
+    window.addEventListener('updateAvailableDates', handleAvailableDatesUpdate as EventListener);
+    return () => window.removeEventListener('updateAvailableDates', handleAvailableDatesUpdate as EventListener);
+  }, []);
 
   return (
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: '#6366f1',
+          colorPrimary: '#00b894',
           borderRadius: 8,
-          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+          fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          colorBgContainer: '#ffffff',
+          colorBorderSecondary: '#e8ecef',
         },
       }}
     >
-      <Layout style={{ minHeight: '100vh', width: '100vw', margin: 0, padding: 0 }}>
+      <Layout style={{ minHeight: '100vh', width: '100vw', margin: 0, padding: 0, background: '#f5f7fa' }}>
         <Sider
+          className="sider"
           collapsible
           collapsed={collapsed}
           onCollapse={(value) => setCollapsed(value)}
           style={{
-            background: 'linear-gradient(180deg, #1e1b4b 0%, #312e81 100%)',
-            borderRight: '1px solid rgba(99, 102, 241, 0.2)',
-            boxShadow: '4px 0 24px rgba(99, 102, 241, 0.15)',
+            background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)',
             position: 'fixed',
             left: 0,
             top: 0,
@@ -62,41 +85,26 @@ const App: React.FC = () => {
             overflow: 'auto',
           }}
           theme="dark"
-          width={256}
+          width={260}
         >
-          <div style={{
-            height: 64,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderBottom: '1px solid rgba(99, 102, 241, 0.2)',
-            padding: '0 16px',
-          }}>
+          <div className="sider-header">
             {!collapsed ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ 
-                  width: 36, 
-                  height: 36, 
-                  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                  borderRadius: 10,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 18,
-                }}>🚀</div>
-                <span style={{ 
-                  fontSize: 16, 
-                  fontWeight: 700,
-                  background: 'linear-gradient(135deg, #fff 0%, #e0e7ff 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}>SLS 费用平台</span>
+              <div className="sider-brand">
+                <div className="sider-brand-icon">📊</div>
+                <div>
+                  <div className="sider-brand-title">SLS 费用平台</div>
+                  <Text className="sider-brand-subtitle">成本分析与优化</Text>
+                </div>
               </div>
             ) : (
-              <div style={{ fontSize: 20 }}>🚀</div>
+              <div style={{ fontSize: 22 }}>📊</div>
             )}
           </div>
+          
+          <div style={{ padding: '20px 12px' }}>
+            <Text className="sider-menu-label">主菜单</Text>
+          </div>
+          
           <Menu
             theme="dark"
             mode="inline"
@@ -109,32 +117,73 @@ const App: React.FC = () => {
             style={{
               background: 'transparent',
               borderRight: 'none',
-              marginTop: 16,
+              fontSize: 14,
             }}
           />
+          
+          <div className="sider-tip">
+            <Text className="sider-tip-title">💡 提示</Text>
+            <Text className="sider-tip-text">数据每小时自动更新</Text>
+          </div>
         </Sider>
+        
         <Layout style={{ 
-          marginLeft: collapsed ? 80 : 256,
-          transition: 'margin-left 0.2s ease',
+          marginLeft: collapsed ? 80 : 260,
+          transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           background: 'transparent',
+          minHeight: '100vh',
         }}>
-          <Content
-            style={{
-              margin: 0,
-              padding: 24,
-              minHeight: '100vh',
-              background: 'linear-gradient(135deg, #f8fafc 0%, #e0e7ff 50%, #f1f5f9 100%)',
-              overflow: 'auto',
-            }}
-          >
-            {renderKey === 'log-analysis' && <Dashboard key="dashboard" />}
-            {renderKey === 'token-usage' && <TokenUsage key="token" />}
-            {renderKey === 'buckets' && (
-              <div key="buckets" style={{ fontSize: 18, color: '#666' }}>📁 存储桶页面 - 开发中</div>
-            )}
-            {renderKey === 'settings' && (
-              <div key="settings" style={{ fontSize: 18, color: '#666' }}>⚙️ 设置页面 - 开发中</div>
-            )}
+          <div className="header">
+            <div className="header-title">
+              {selectedKey === 'log-analysis' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <span>📊 日志分析</span>
+                  <DatePicker
+                    value={dayjs(selectedDate)}
+                    onChange={(date) => {
+                      if (date) {
+                        const dateStr = date.format('YYYY-MM-DD');
+                        setSelectedDate(dateStr);
+                        window.dispatchEvent(new CustomEvent('updateGlobalDate', { 
+                          detail: dateStr 
+                        }));
+                      }
+                    }}
+                    disabledDate={(current) => {
+                      if (!current || availableDatesRef.current.length === 0) return true;
+                      const dateStr = current.format('YYYY-MM-DD');
+                      return !availableDatesRef.current.includes(dateStr);
+                    }}
+                    size="small"
+                    style={{ width: 140 }}
+                  />
+                </div>
+              )}
+              {selectedKey === 'token-usage' && '🎫 Token 使用统计'}
+              {selectedKey === 'buckets' && '📁 存储桶管理'}
+              {selectedKey === 'settings' && '⚙️ 系统设置'}
+            </div>
+          </div>
+          
+          <Content className="content">
+            <div className="content-inner">
+              {renderKey === 'log-analysis' && <Dashboard key="dashboard" initialDate={selectedDate} />}
+              {renderKey === 'token-usage' && <TokenUsage key="token" />}
+              {renderKey === 'buckets' && (
+                <div key="buckets" className="empty">
+                  <div className="empty-icon">📁</div>
+                  <div className="empty-title">存储桶管理</div>
+                  <Text className="empty-description">页面开发中，敬请期待</Text>
+                </div>
+              )}
+              {renderKey === 'settings' && (
+                <div key="settings" className="empty">
+                  <div className="empty-icon">⚙️</div>
+                  <div className="empty-title">系统设置</div>
+                  <Text className="empty-description">页面开发中，敬请期待</Text>
+                </div>
+              )}
+            </div>
           </Content>
         </Layout>
       </Layout>

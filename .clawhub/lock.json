@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "frontend-design-3": {
+      "version": "0.1.0",
+      "installedAt": 1776840602715
+    },
+    "timeflow-web-design-guidelines": {
+      "version": "1.0.0",
+      "installedAt": 1776842282198
+    },
+    "ui-ux-pro-max-plus": {
+      "version": "1.0.0",
+      "installedAt": 1776848224247
+    }
+  }
+}

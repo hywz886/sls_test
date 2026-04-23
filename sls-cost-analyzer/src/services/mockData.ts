@@ -12,7 +12,7 @@ export const fetchAvailableDates = async (): Promise<string[]> => {
     }
 
     const jsonFiles = result.files
-      .filter((f: any) => f.type === 'json')
+      .filter((f: any) => f.type === 'json' && !f.date.includes('-analysis'))
       .map((f: any) => f.date)
       .filter((d: string) => d)
       .sort((a: string, b: string) => b.localeCompare(a));
@@ -82,6 +82,7 @@ export const fetchCostData = async (date?: string): Promise<CostAnalysis> => {
       maxDailyCost: data.maxDailyCost || 0,
       isWorkday: data.isWorkday,
       workdayReason: data.workdayReason,
+      dayComparison: data.dayComparison || null,
       weekComparison: data.weekComparison || null,
       monthComparison: data.monthComparison || null,
     };

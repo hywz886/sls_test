@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Card, Row, Col, Table, Typography, Space, DatePicker } from 'antd';
+import React, { useMemo, useState } from 'react';
+import { Card, Row, Col, Table, Typography, Space, DatePicker, Input } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { DataTableProps } from './types';
 import type { LogstoreSummary } from '../../types';
@@ -13,7 +13,7 @@ const columns: ColumnsType<any> = [
     dataIndex: 'logstore',
     key: 'logstore',
     fixed: 'left' as const,
-    width: 320,
+    width: 220,
     render: (text: string, record: any) => (
       <Space orientation="vertical" size={0}>
         <Text strong style={{ fontSize: 14, color: '#1f2937' }}>
@@ -29,7 +29,7 @@ const columns: ColumnsType<any> = [
     title: '费用 (元)',
     dataIndex: 'totalCost',
     key: 'totalCost',
-    width: 150,
+    width: 160,
     sorter: (a: any, b: any) => a.totalCost - b.totalCost,
     render: (val: number) => (
       <Text strong style={{ color: '#6366f1', fontFamily: 'monospace', fontSize: 15 }}>
@@ -38,10 +38,27 @@ const columns: ColumnsType<any> = [
     ),
   },
   {
+    title: '日对比',
+    dataIndex: 'dayComparison',
+    key: 'dayComparison',
+    width: 160,
+    render: (val: any) => {
+      if (!val) return <Text type="secondary">-</Text>;
+      const color = val.trend === 'up' ? '#ef4444' : val.trend === 'down' ? '#22c55e' : '#6b7280';
+      const arrow = val.trend === 'up' ? '↑' : val.trend === 'down' ? '↓' : '→';
+      return (
+        <Text strong style={{ color }}>
+          {arrow} {val.changePercent > 0 ? '+' : ''}
+          {val.changePercent.toFixed(1)}%
+        </Text>
+      );
+    },
+  },
+  {
     title: '周对比',
     dataIndex: 'weekComparison',
     key: 'weekComparison',
-    width: 140,
+    width: 160,
     render: (val: any) => {
       if (!val) return <Text type="secondary">-</Text>;
       const color = val.trend === 'up' ? '#ef4444' : val.trend === 'down' ? '#22c55e' : '#6b7280';
@@ -58,7 +75,7 @@ const columns: ColumnsType<any> = [
     title: '月对比',
     dataIndex: 'monthComparison',
     key: 'monthComparison',
-    width: 140,
+    width: 160,
     render: (val: any) => {
       if (!val) return <Text type="secondary">-</Text>;
       const color = val.trend === 'up' ? '#ef4444' : val.trend === 'down' ? '#22c55e' : '#6b7280';
@@ -80,15 +97,27 @@ export const DataTable: React.FC<DataTableProps> = ({
   selectedDate,
   onDateChange,
 }) => {
+  const [logstoreFilter, setLogstoreFilter] = useState<string>('');
+
   const tableData = useMemo(() => {
     if (!data?.logstoreSummaries) {
       return [];
     }
-    return data.logstoreSummaries.map((summary: LogstoreSummary) => ({
+    let filtered = data.logstoreSummaries.map((summary: LogstoreSummary) => ({
       ...summary,
       key: `${summary.projectId}-${summary.logstore}`,
     }));
-  }, [data?.logstoreSummaries]);
+    
+    // 应用 logstore 筛选
+    if (logstoreFilter) {
+      filtered = filtered.filter((item: any) => 
+        item.logstore.toLowerCase().includes(logstoreFilter.toLowerCase()) ||
+        item.projectId.toLowerCase().includes(logstoreFilter.toLowerCase())
+      );
+    }
+    
+    return filtered;
+  }, [data?.logstoreSummaries, logstoreFilter]);
 
   // 工作日标识
   const isWorkday = data?.isWorkday;
@@ -106,7 +135,20 @@ export const DataTable: React.FC<DataTableProps> = ({
         <Card 
           title={
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <span>📋 费用明细 ({tableData.length} 条记录)</span>
+              <span style={{ fontSize: 16, fontWeight: 600, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>每日费用明细</span>
+              <span style={{ fontSize: 13, color: '#9ca3af', fontWeight: 400 }}>({tableData.length} 条记录)</span>
+              <Input
+                placeholder="🔍 搜索 Logstore 或 Project"
+                value={logstoreFilter}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setLogstoreFilter(value);
+                }}
+                allowClear
+                size="small"
+                style={{ width: 220, marginLeft: 12 }}
+                prefix="🔍"
+              />
               {workdayTag && (
                 <span style={{ 
                   fontSize: 12, 
