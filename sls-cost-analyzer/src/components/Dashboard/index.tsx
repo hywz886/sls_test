@@ -38,13 +38,13 @@ const Dashboard: React.FC<DashboardProps> = ({ initialDate }) => {
       setData(costData);
       
       // 计算新卡片数据
-      calculateCardData(costData, availableDates);
+      await calculateCardData(costData, availableDates);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
       setLoading(false);
     }
-  }, [data?.dailyCosts, availableDates]);
+  }, [availableDates]);
   
   // 计算卡片数据（使用后端 API 返回的对比数据）
   const calculateCardData = useCallback(async (costData: CostAnalysis | null, dates: string[]) => {
@@ -77,6 +77,9 @@ const Dashboard: React.FC<DashboardProps> = ({ initialDate }) => {
             changePercent: costData.dayComparison.changePercent || 0,
             trend: costData.dayComparison.trend || 'stable'
           });
+        } else {
+          // 如果没有日对比数据，设置为 undefined
+          setDayComparison(undefined);
         }
         
         // 4. 周对比
@@ -87,6 +90,8 @@ const Dashboard: React.FC<DashboardProps> = ({ initialDate }) => {
             changePercent: costData.weekComparison.changePercent || 0,
             trend: costData.weekComparison.trend || 'stable'
           });
+        } else {
+          setWeekComparison(undefined);
         }
         
         // 5. 月对比
@@ -97,14 +102,9 @@ const Dashboard: React.FC<DashboardProps> = ({ initialDate }) => {
             changePercent: costData.monthComparison.changePercent || 0,
             trend: costData.monthComparison.trend || 'stable'
           });
+        } else {
+          setMonthComparison(undefined);
         }
-        
-        console.log('📊 对比数据:', {
-          weekComparison: costData.weekComparison,
-          monthComparison: costData.monthComparison,
-          isWorkday: costData.isWorkday,
-          workdayReason: costData.workdayReason
-        });
       }
     } catch (error) {
       console.error('Failed to calculate card data:', error);
@@ -134,13 +134,16 @@ const Dashboard: React.FC<DashboardProps> = ({ initialDate }) => {
           const latestDate = dates[0];
           setSelectedDate(latestDate);
 
-          const sortedDates = [...dates].sort((a, b) => a.localeCompare(b));
+          const sortedDates = [...dates].sort((a, b) => b.localeCompare(a)); // 降序排序，最新在前
+          // 计算 1 个月前的日期（30 天）
           const oneMonthAgo = dayjs(latestDate).subtract(30, 'day').format('YYYY-MM-DD');
-          const startDate = sortedDates.find((d) => d >= oneMonthAgo) || sortedDates[0];
+          // 找到大于等于 30 天前的第一个日期，如果没有则使用最早的日期
+          const startDate = sortedDates.reverse().find((d) => d >= oneMonthAgo) || sortedDates[0];
           
-          // 设置趋势图日期范围（一个月前到最新）
+          // 设置趋势图日期范围：最近 1 个月（30 天）
           const initialDateRange: [string, string] = [startDate, latestDate];
           setTrendDateRange(initialDateRange);
+          console.log(`📅 初始化趋势图日期范围：${startDate} ~ ${latestDate}（30 天）`);
 
           // 获取最新日期的单日数据（包含对比数据）
           const singleDayResponse = await fetch(`/api/query?startDate=${latestDate}&endDate=${latestDate}`);
@@ -175,8 +178,9 @@ const Dashboard: React.FC<DashboardProps> = ({ initialDate }) => {
 
   useEffect(() => {
     if (!initialized || !selectedDate || !availableDates.includes(selectedDate)) return;
+    // 只在 selectedDate 真正变化时才加载数据
     loadData(selectedDate, true);
-  }, [selectedDate, loadData, availableDates, initialized]);
+  }, [selectedDate, availableDates, initialized]);
 
   // 监听全局日期更新事件（来自 Header 的日期选择器）
   useEffect(() => {
@@ -191,75 +195,8 @@ const Dashboard: React.FC<DashboardProps> = ({ initialDate }) => {
     return () => window.removeEventListener('updateGlobalDate', handleGlobalDateUpdate as EventListener);
   }, [availableDates]);
 
-  // 监听日期范围更新事件
-  useEffect(() => {
-    const handleDateRangeUpdate = (event: CustomEvent<[string, string]>) => {
-      const [startDate, endDate] = event.detail;
-      setTrendDateRange([startDate, endDate]);
-      
-      // 根据当前选择的 Logstore 重新获取数据
-      if (selectedLogstore && selectedLogstore !== '__all__') {
-        fetchLogstoreTrend(startDate, endDate, selectedLogstore);
-      } else {
-        fetchTotalCostTrend(startDate, endDate);
-      }
-    };
-
-    const fetchLogstoreTrend = async (startDate: string, endDate: string, logstore: string) => {
-      try {
-        const response = await fetch(
-          `/api/query?startDate=${startDate}&endDate=${endDate}&logstore=${encodeURIComponent(logstore)}`
-        );
-        const result = await response.json();
-
-        if (result.success && result.data) {
-          setData((prevData) => {
-            if (!prevData) return null;
-            return {
-              ...prevData,
-              dailyCosts: result.data.dailyCosts.map((d: any) => ({
-                date: d.date,
-                totalCost: d.totalCost,
-                projectId: 'logstore',
-                projectName: logstore,
-              })),
-            };
-          });
-        }
-      } catch (error) {
-        console.error('Failed to fetch logstore trend:', error);
-      }
-    };
-
-    const fetchTotalCostTrend = async (startDate: string, endDate: string) => {
-      try {
-        const response = await fetch(
-          `/api/query?startDate=${startDate}&endDate=${endDate}`
-        );
-        const result = await response.json();
-
-        if (result.success && result.data) {
-          setData((prevData) => {
-            if (!prevData) return null;
-            return {
-              ...prevData,
-              dailyCosts: result.data.dailyCosts.map((d: any) => ({
-                date: d.date,
-                totalCost: d.totalCost,
-                projectId: 'total',
-                projectName: '总费用',
-              })),
-            };
-          });
-        }
-      } catch (error) {
-        console.error('Failed to fetch total cost trend:', error);
-      }
-    };
-
-    window.addEventListener('updateTrendDateRange', handleDateRangeUpdate as EventListener);
-    return () => window.removeEventListener('updateTrendDateRange', handleDateRangeUpdate as EventListener);
-  }, [selectedLogstore]);
+  // 监听日期范围更新事件（已移除，Charts 组件现在独立管理日期范围）
+  // 保留 trendDateRange 状态用于初始化时的默认值
 
   // 监听 Logstore 更新事件
   useEffect(() => {

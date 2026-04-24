@@ -20,6 +20,52 @@ export const Charts: React.FC<ChartsProps> = ({
   };
 
   const chartInstances = useRef<{ trend?: echarts.ECharts; project?: echarts.ECharts }>({});
+  
+  // 本地状态：趋势图数据
+  const [trendData, setTrendData] = React.useState<any[]>([]);
+  // 本地日期范围状态（独立于其他组件）
+  const [localTrendDateRange, setLocalTrendDateRange] = React.useState<[string, string] | null>(null);
+
+  // 初始化时使用传入的 trendDateRange 或默认范围（最近 1 个月）
+  useEffect(() => {
+    if (trendDateRange && !localTrendDateRange) {
+      // 只在首次加载时使用传入的日期范围
+      setLocalTrendDateRange(trendDateRange);
+    }
+  }, [trendDateRange]);
+
+  // 当日期范围或 selectedLogstore 变化时，获取对应的趋势数据
+  useEffect(() => {
+    if (!localTrendDateRange) return;
+    
+    const [startDate, endDate] = localTrendDateRange;
+    const fetchTrendData = async () => {
+      try {
+        let url = `/api/query?startDate=${startDate}&endDate=${endDate}`;
+        if (selectedLogstore && selectedLogstore !== '__all__') {
+          url += `&logstore=${encodeURIComponent(selectedLogstore)}`;
+        }
+        
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (result.success && result.data?.dailyCosts) {
+          const dailyCosts = result.data.dailyCosts.map((d: any) => ({
+            date: d.date,
+            totalCost: d.totalCost,
+            projectId: selectedLogstore ? 'logstore' : 'total',
+            projectName: selectedLogstore || '总费用',
+          }));
+          setTrendData(dailyCosts);
+          console.log(`📊 获取趋势数据：${startDate} ~ ${endDate}, ${dailyCosts.length} 天`);
+        }
+      } catch (error) {
+        console.error('获取趋势数据失败:', error);
+      }
+    };
+    
+    fetchTrendData();
+  }, [localTrendDateRange, selectedLogstore]);
 
   useEffect(() => {
     return () => {
@@ -29,10 +75,11 @@ export const Charts: React.FC<ChartsProps> = ({
   }, []);
 
   const trendChartOption = useMemo(() => {
-    if (!data?.dailyCosts) return null;
+    if (trendData.length === 0) return null;
 
-    const sortedDailyCosts = [...data.dailyCosts].sort((a, b) => a.date.localeCompare(b.date));
-    const [startDate, endDate] = trendDateRange || [
+    const sortedDailyCosts = [...trendData].sort((a, b) => a.date.localeCompare(b.date));
+    // 使用本地日期范围过滤
+    const [startDate, endDate] = localTrendDateRange || [
       sortedDailyCosts[0]?.date,
       sortedDailyCosts[sortedDailyCosts.length - 1]?.date,
     ];
@@ -92,7 +139,7 @@ export const Charts: React.FC<ChartsProps> = ({
         },
       ],
     };
-  }, [data?.dailyCosts, trendDateRange, selectedLogstore]);
+  }, [trendData, localTrendDateRange, selectedLogstore]);
 
   const projectChartOption = useMemo(() => {
     if (!data?.logstoreSummaries) return null;
@@ -289,16 +336,13 @@ export const Charts: React.FC<ChartsProps> = ({
                 <Text strong style={{ fontSize: 13 }}>日期范围</Text>
               </div>
               <DatePicker.RangePicker
-                value={[dayjs(trendDateRange?.[0]), dayjs(trendDateRange?.[1])]}
+                value={localTrendDateRange ? [dayjs(localTrendDateRange[0]), dayjs(localTrendDateRange[1])] : [dayjs(trendDateRange?.[0]), dayjs(trendDateRange?.[1])]}
                 onChange={(dates) => {
                   if (dates && dates[0] && dates[1]) {
                     const startDate = dates[0].format('YYYY-MM-DD');
                     const endDate = dates[1].format('YYYY-MM-DD');
-                    // 更新趋势图的日期范围
-                    const event = new CustomEvent('updateTrendDateRange', { 
-                      detail: [startDate, endDate] 
-                    });
-                    window.dispatchEvent(event);
+                    // 只更新本地状态，不再触发全局事件
+                    setLocalTrendDateRange([startDate, endDate]);
                   }
                 }}
                 disabledDate={(current) => {

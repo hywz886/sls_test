@@ -902,6 +902,7 @@ app.get('/api/query', async (req, res) => {
             projectName: p.projectName || p.projectId,
             logstore: p.logstore || '-',
             totalCost: p.totalCost,
+            dayComparison: p.dayComparison || null,
             weekComparison: p.weekComparison || null,
             monthComparison: p.monthComparison || null,
           });
@@ -942,6 +943,7 @@ app.get('/api/query', async (req, res) => {
           projectName: r.projectName,
           logstore: r.logstore,
           totalCost: 0,
+          dayComparison: r.dayComparison || null,
           weekComparison: r.weekComparison || null,
           monthComparison: r.monthComparison || null,
         });
@@ -949,6 +951,9 @@ app.get('/api/query', async (req, res) => {
       const item = logstoreMap.get(key);
       item.totalCost += r.totalCost;
       // 如果是多日查询,对比数据取最新日期的(第一个遇到的)
+      if (!item.dayComparison && r.dayComparison) {
+        item.dayComparison = r.dayComparison;
+      }
       if (!item.weekComparison && r.weekComparison) {
         item.weekComparison = r.weekComparison;
       }
@@ -1383,7 +1388,10 @@ const watchAndProcess = () => {
   watch(SOURCE_DIR, (eventType, filename) => {
     // 只处理 CSV 文件
     if (!filename || !filename.endsWith('.csv')) return;
-    if (!filename.startsWith('sls-cost-')) return;
+    // 支持两种格式：sls-cost-YYYY-MM-DD.csv 和 sls_bill_YYYYMMDD.csv
+    const isStandardFormat = filename.startsWith('sls-cost-');
+    const isSlsBillFormat = filename.startsWith('sls_bill_');
+    if (!isStandardFormat && !isSlsBillFormat) return;
 
     const filepath = path.join(SOURCE_DIR, filename);
 
@@ -1401,14 +1409,23 @@ const watchAndProcess = () => {
 
         console.log(`📄 检测到新文件:${filename} (${stats.size} bytes)`);
 
-        // 提取日期
-        const dateMatch = filename.match(/sls-cost-(\d{4}-\d{2}-\d{2})\.csv/);
-        if (!dateMatch) {
+        // 提取日期 (支持两种格式)
+        let date: string | null = null;
+        const standardMatch = filename.match(/sls-cost-(\d{4}-\d{2}-\d{2})\.csv/);
+        const slsBillMatch = filename.match(/sls_bill_(\d{8})\.csv/);
+        
+        if (standardMatch) {
+          date = standardMatch[1]; // YYYY-MM-DD
+        } else if (slsBillMatch) {
+          // YYYYMMDD → YYYY-MM-DD
+          const rawDate = slsBillMatch[1];
+          date = `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`;
+        }
+        
+        if (!date) {
           console.log(`⚠️  无法从文件名提取日期:${filename}`);
           return;
         }
-
-        const date = dateMatch[1];
         console.log(`🔄 开始自动处理:${date}`);
 
         // 处理文件

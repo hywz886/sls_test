@@ -42,14 +42,16 @@ const columns: ColumnsType<any> = [
     dataIndex: 'dayComparison',
     key: 'dayComparison',
     width: 160,
-    render: (val: any) => {
-      if (!val) return <Text type="secondary">-</Text>;
-      const color = val.trend === 'up' ? '#ef4444' : val.trend === 'down' ? '#22c55e' : '#6b7280';
-      const arrow = val.trend === 'up' ? '↑' : val.trend === 'down' ? '↓' : '→';
+    render: (val: any, record: any) => {
+      // 优先使用 logstore 级别的对比数据
+      const comparison = record.dayComparison || val;
+      if (!comparison) return <Text type="secondary">-</Text>;
+      const color = comparison.trend === 'up' ? '#ef4444' : comparison.trend === 'down' ? '#22c55e' : '#6b7280';
+      const arrow = comparison.trend === 'up' ? '↑' : comparison.trend === 'down' ? '↓' : '→';
       return (
         <Text strong style={{ color }}>
-          {arrow} {val.changePercent > 0 ? '+' : ''}
-          {val.changePercent.toFixed(1)}%
+          {arrow} {comparison.changePercent > 0 ? '+' : ''}
+          {comparison.changePercent.toFixed(1)}%
         </Text>
       );
     },
@@ -103,16 +105,19 @@ export const DataTable: React.FC<DataTableProps> = ({
     if (!data?.logstoreSummaries) {
       return [];
     }
+    
     let filtered = data.logstoreSummaries.map((summary: LogstoreSummary) => ({
       ...summary,
       key: `${summary.projectId}-${summary.logstore}`,
     }));
     
     // 应用 logstore 筛选
-    if (logstoreFilter) {
+    if (logstoreFilter.trim()) {
+      const filterLower = logstoreFilter.toLowerCase();
       filtered = filtered.filter((item: any) => 
-        item.logstore.toLowerCase().includes(logstoreFilter.toLowerCase()) ||
-        item.projectId.toLowerCase().includes(logstoreFilter.toLowerCase())
+        item.logstore.toLowerCase().includes(filterLower) ||
+        item.projectId.toLowerCase().includes(filterLower) ||
+        (item.projectName && item.projectName.toLowerCase().includes(filterLower))
       );
     }
     
